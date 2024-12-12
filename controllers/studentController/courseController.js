@@ -67,8 +67,10 @@ exports.getAllStudentViewCoursesController = async (req, res) => {
 exports.getStudentViewCourseDetailsController = async (req, res) => {
     try {
       const { id } = req.params;
+      const studentId = req.user?.id; // Ensure user ID is extracted from the token
+      console.log("Student ID:", studentId);
+
       const courseDetails = await Course.findById(id);
-  
       if (!courseDetails) {
         return res.status(404).json({
           success: false,

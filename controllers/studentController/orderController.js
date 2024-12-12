@@ -4,6 +4,9 @@ const Course = require("../../models/courseModel");
 const StudentCourses = require("../../models/studentCourses");
 
 exports.createOrderController = async (req, res) => {
+  const studentId = req.user?.id; // Ensure user ID is extracted from the token
+    console.log("Student ID:", studentId);
+
   try {
     const {
       userId,
@@ -63,7 +66,7 @@ exports.createOrderController = async (req, res) => {
         });
       } else {
         const newlyCreatedCourseOrder = new Order({
-          userId,
+          userId:studentId,
           userName,
           userEmail,
           orderStatus,
@@ -106,81 +109,96 @@ exports.createOrderController = async (req, res) => {
 
 exports.capturePaymentAndFinalizeOrderController = async (req, res) => {
   try {
-    const { paymentId, payerId, orderId } = req.body;
-
-    let order = await Order.findById(orderId);
-
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: "Order can not be found",
-      });
-    }
-
-    order.paymentStatus = "paid";
-    order.orderStatus = "confirmed";
-    order.paymentId = paymentId;
-    order.payerId = payerId;
-
-    await order.save();
-
-    //update out student course model
-    const studentCourses = await StudentCourses.findOne({
-      userId: order.userId,
-    });
-
-    if (studentCourses) {
-      studentCourses.courses.push({
-        courseId: order.courseId,
-        title: order.courseTitle,
-        instructorId: order.instructorId,
-        instructorName: order.instructorName,
-        dateOfPurchase: order.orderDate,
-        courseImage: order.courseImage,
-      });
-
-      await studentCourses.save();
-    } else {
-      const newStudentCourses = new StudentCourses({
-        userId: order.userId,
-        courses: [
-          {
-            courseId: order.courseId,
-            title: order.courseTitle,
-            instructorId: order.instructorId,
-            instructorName: order.instructorName,
-            dateOfPurchase: order.orderDate,
-            courseImage: order.courseImage,
+      const { paymentId, payerId, orderId } = req.body;
+      
+      // Find the order
+      let order = await Order.findById(orderId);
+      
+      // Check if the order exists
+      if (!order) {
+          return res.status(404).json({
+              success: false,
+              message: "Order cannot be found",
+          });
+      }
+      
+      // Update order status and payment details
+      order.paymentStatus = "paid";
+      order.orderStatus = "confirmed";
+      order.paymentId = paymentId;
+      order.payerId = payerId;
+      await order.save();
+      console.log("Order updated:", order);
+      
+      // Find or create StudentCourses document
+      let studentCourses = await StudentCourses.findOne({ userId: order.userId });
+      
+      // Check if course already exists
+      const courseExists = studentCourses && 
+          studentCourses.courses.some(
+              course => course.courseId.toString() === order.courseId.toString()
+          );
+      
+      // Add course if it doesn't exist
+      if (!studentCourses) {
+          // Create new StudentCourses document if it doesn't exist
+          studentCourses = await StudentCourses.create({
+              userId: order.userId,
+              courses: [{
+                  courseId: order.courseId,
+                  title: order.courseTitle,
+                  instructorId: order.instructorId,
+                  instructorName: order.instructorName,
+                  dateOfPurchase: order.orderDate,
+                  courseImage: order.courseImage,
+              }]
+          });
+      } else if (!courseExists) {
+          // Add course to existing StudentCourses document
+          studentCourses.courses.push({
+              courseId: order.courseId,
+              title: order.courseTitle,
+              instructorId: order.instructorId,
+              instructorName: order.instructorName,
+              dateOfPurchase: order.orderDate,
+              courseImage: order.courseImage,
+          });
+          await studentCourses.save();
+      }
+      
+      console.log("Student courses updated:", studentCourses);
+      
+      // Update the course schema with students
+      await Course.findByIdAndUpdate(order.courseId, {
+          $addToSet: {
+              students: {
+                  studentId: order.userId,
+                  studentName: order.userName,
+                  studentEmail: order.userEmail,
+                  paidAmount: order.coursePricing,
+              },
           },
-        ],
       });
-
-      await newStudentCourses.save();
-    }
-
-    //update the course schema students
-    await Course.findByIdAndUpdate(order.courseId, {
-      $addToSet: {
-        students: {
-          studentId: order.userId,
-          studentName: order.userName,
-          studentEmail: order.userEmail,
-          paidAmount: order.coursePricing,
-        },
-      },
-    });
-
-    res.status(200).json({
-      success: true,
-      message: "Order confirmed",
-      data: order,
-    });
+      
+      console.log("Course schema students updated");
+      
+      // Respond with success
+      res.status(200).json({
+          success: true,
+          message: "Order confirmed",
+          data: order,
+      });
   } catch (err) {
-    console.log(err);
-    res.status(500).json({
-      success: false,
-      message: "Some error occured!",
-    });
+      console.error("Error in capturePaymentAndFinalizeOrderController:", err);
+      res.status(500).json({
+          success: false,
+          message: "Some error occurred!",
+          error: err.message
+      });
   }
 };
+
+
+
+
 

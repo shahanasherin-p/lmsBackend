@@ -1,26 +1,57 @@
 const Course = require("../models/courseModel");
 
 
-exports.addNewCourseController = async (req, res) => {
-    try {
-      const courseData = req.body;
-      const newlyCreatedCourse = new Course(courseData);
-      const saveCourse = await newlyCreatedCourse.save();
+// exports.addNewCourseController = async (req, res) => {
+//   const instructorId = req.user?.id; 
+//   console.log(instructorId);// Ensure user ID is extracted from the token
+//     try {
+//       const courseData = req.body;
+//       const newlyCreatedCourse = new Course(courseData);
+//       const saveCourse = await newlyCreatedCourse.save();
   
-      if (saveCourse) {
-        res.status(201).json({
-          success: true,
-          message: "Course saved successfully",
-          data: saveCourse,
-        });
-      }
-    } catch (e) {
-      console.log(e);
-      res.status(500).json({
-        success: false,
-        message: "Some error occured!",
-      });
-    }
+//       if (saveCourse) {
+//         res.status(201).json({
+//           success: true,
+//           message: "Course saved successfully",
+//           data: saveCourse,
+//         });
+//       }
+//     } catch (e) {
+//       console.log(e);
+//       res.status(500).json({
+//         success: false,
+//         message: "Some error occured!",
+//       });
+//     }
+// };
+
+
+exports.addNewCourseController = async (req, res) => {
+  const instructorId = req.user?.id; 
+  
+  try {
+    // Ensure instructorId is added to the course data
+    const courseData = {
+      ...req.body,
+      instructorId: instructorId
+    };
+
+    const newlyCreatedCourse = new Course(courseData);
+    const saveCourse = await newlyCreatedCourse.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Course saved successfully",
+      data: saveCourse,
+    });
+  } catch (e) {
+    console.error("Error in addNewCourseController:", e);
+    res.status(500).json({
+      success: false,
+      message: "Some error occurred!",
+      error: e.message
+    });
+  }
 };
 
 
@@ -53,22 +84,6 @@ exports.deleteCourseController = async (req, res) => {
   }
 };
 
-// exports.getAllCoursesController = async (req, res) => {
-//     try {
-//       const coursesList = await Course.find({});
-  
-//       res.status(200).json({
-//         success: true,
-//         data: coursesList,
-//       });
-//     } catch (e) {
-//       console.log(e);
-//       res.status(500).json({
-//         success: false,
-//         message: "Some error occured!",
-//       });
-//     }
-// };
 
 
 exports.getAllCoursesController = async (req, res) => {
@@ -96,9 +111,6 @@ exports.getAllCoursesController = async (req, res) => {
     });
   }
 };
-
-
-
 
 
 

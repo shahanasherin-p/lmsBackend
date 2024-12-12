@@ -1,7 +1,11 @@
 const mongoose = require("mongoose");
 
 const OrderSchema = new mongoose.Schema({
-  userId: String,
+  userId: {
+    type:String,
+    required:true
+
+  },
   userName: String,
   userEmail: String,
   orderStatus: String,
@@ -14,7 +18,11 @@ const OrderSchema = new mongoose.Schema({
   instructorName: String,
   courseImage: String,
   courseTitle: String,
-  courseId: String,
+  courseId: {
+    type:String,
+    required:true
+
+  },
   coursePricing: String,
 });
 
